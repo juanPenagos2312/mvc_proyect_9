@@ -8,6 +8,15 @@ class TipoActivo(str, enum.Enum):
     KIT_DESARROLLO = "Kit de desarrollo"
     MONITOR = "Monitor"
 
+class UsuarioModel(Base):
+    __tablename__="usuarios"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    nombre = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    password = Column(String, nullable=False)
+    rol = Column(String, unique = True, index = True, nullable =False)
+   
+    
 
 class Activo(Base):
     __tablename__ = "activos"
@@ -15,11 +24,11 @@ class Activo(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     numero_serie = Column(String, unique=True, nullable=False, index=True)
     placa_inventario = Column(String, unique=True, nullable=False)
-    especificaciones_hardware = Column(Text, nullable=False)
-    tipo = Column(Enum(TipoActivo, create_type=True), nullable=False)
+    especificaciones_hardware = Column(String, nullable=False)
+    tipo = Column(Enum(TipoActivo, values_callable=lambda x: [e.value for e in x]), nullable=False)
 
     # Relaciones
-    prestamos = relationship("Prestamo", back_populates="activo")
+    prestamos = relationship("PrestamoModel", back_populates="activo")
 
 
 class Ambiente(Base):
