@@ -8,15 +8,7 @@ class TipoActivo(str, enum.Enum):
     KIT_DESARROLLO = "Kit de desarrollo"
     MONITOR = "Monitor"
 
-class UsuarioModel(Base):
-    __tablename__="usuarios"
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    nombre = Column(String, unique=True, index=True, nullable=False)
-    email = Column(String, unique=True, index=True, nullable=False)
-    password = Column(String, nullable=False)
-    rol = Column(String, unique = True, index = True, nullable =False)
-   
-    
+
 
 class Activo(Base):
     __tablename__ = "activos"
