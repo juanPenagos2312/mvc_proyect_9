@@ -2,14 +2,26 @@ from sqlalchemy.orm import Session
 from datetime import date, time
 from fastapi import HTTPException, status
 
-from app.models import Activo, Ambiente, Instructor, Reserva
+from app.models import (
+    Activo,
+    Ambiente,
+    Instructor,
+    Reserva,
+    Aprendiz,
+    PrestamoModel,
+    PC,
+    PrestamoPC
+)
 from app.schemas import (
     ActivoCreate, ActivoUpdate,
     AmbienteCreate, AmbienteUpdate,
     InstructorCreate, InstructorUpdate,
-    ReservaCreate, ReservaUpdate
+    ReservaCreate, ReservaUpdate,
+    AprendizCreate, AprendizUpdate,
+    PrestamoCreate, PrestamoUpdate,
+    PCCreate, PCUpdate,
+    PrestamoPCCreate, PrestamoPCUpdate
 )
-
 # ==================== ACTIVOS ====================
 def obtener_activos(db: Session):
     return db.query(Activo).all()
@@ -231,3 +243,315 @@ def eliminar_reserva(db: Session, reserva_id: int):
         db.commit()
         return True
     return False
+
+
+
+
+
+def obtener_aprendices(db: Session):
+    return db.query(Aprendiz).all()
+
+
+def obtener_aprendiz_por_id(db: Session, aprendiz_id: int):
+    return db.query(Aprendiz).filter(Aprendiz.id == aprendiz_id).first()
+
+
+def crear_aprendiz(db: Session, aprendiz: AprendizCreate):
+    nuevo_aprendiz = Aprendiz(
+        nombre=aprendiz.nombre,
+        apellido=aprendiz.apellido,
+        documento=aprendiz.documento,
+        correo=aprendiz.correo,
+        telefono=aprendiz.telefono,
+        ficha=aprendiz.ficha,
+        programa=aprendiz.programa
+    )
+
+    db.add(nuevo_aprendiz)
+    db.commit()
+    db.refresh(nuevo_aprendiz)
+
+    return nuevo_aprendiz
+
+
+def actualizar_aprendiz(
+    db: Session,
+    aprendiz_id: int,
+    aprendiz_data: AprendizUpdate
+):
+    db_aprendiz = obtener_aprendiz_por_id(db, aprendiz_id)
+
+    if db_aprendiz:
+        for llave, valor in aprendiz_data.model_dump(
+            exclude_unset=True
+        ).items():
+            setattr(db_aprendiz, llave, valor)
+
+        db.commit()
+        db.refresh(db_aprendiz)
+
+    return db_aprendiz
+
+
+def eliminar_aprendiz(db: Session, aprendiz_id: int):
+    db_aprendiz = obtener_aprendiz_por_id(db, aprendiz_id)
+
+    if db_aprendiz:
+        db.delete(db_aprendiz)
+        db.commit()
+        return True
+
+    return False
+
+
+# ==================== PRÉSTAMOS ====================
+
+def obtener_prestamos(db: Session):
+    return db.query(PrestamoModel).all()
+
+
+def obtener_prestamo_por_id(db: Session, prestamo_id: int):
+    return db.query(PrestamoModel).filter(
+        PrestamoModel.id == prestamo_id
+    ).first()
+
+
+def crear_prestamo(db: Session, prestamo: PrestamoCreate):
+
+    # Verificar que el aprendiz exista
+    aprendiz = db.query(Aprendiz).filter(
+        Aprendiz.id == prestamo.aprendiz_id
+    ).first()
+
+    if not aprendiz:
+        raise HTTPException(
+            status_code=404,
+            detail="El aprendiz no existe"
+        )
+
+    # Verificar que el activo exista
+    activo = db.query(Activo).filter(
+        Activo.id == prestamo.activo_id
+    ).first()
+
+    if not activo:
+        raise HTTPException(
+            status_code=404,
+            detail="El activo no existe"
+        )
+
+    nuevo_prestamo = PrestamoModel(
+        fecha_salida=prestamo.fecha_salida,
+        activo_id=prestamo.activo_id,
+        aprendiz_id=prestamo.aprendiz_id,
+        firma_digital=prestamo.firma_digital,
+        responsabilidad_aprendiz=prestamo.responsabilidad_aprendiz,
+        flujo_salida=prestamo.flujo_salida
+    )
+
+    db.add(nuevo_prestamo)
+    db.commit()
+    db.refresh(nuevo_prestamo)
+
+    return nuevo_prestamo
+
+
+def actualizar_prestamo(
+    db: Session,
+    prestamo_id: int,
+    prestamo_data: PrestamoUpdate
+):
+    db_prestamo = obtener_prestamo_por_id(db, prestamo_id)
+
+    if not db_prestamo:
+        return None
+
+    for llave, valor in prestamo_data.model_dump(
+        exclude_unset=True
+    ).items():
+        setattr(db_prestamo, llave, valor)
+
+    db.commit()
+    db.refresh(db_prestamo)
+
+    return db_prestamo
+
+
+def eliminar_prestamo(db: Session, prestamo_id: int):
+
+    db_prestamo = obtener_prestamo_por_id(db, prestamo_id)
+
+    if db_prestamo:
+        db.delete(db_prestamo)
+        db.commit()
+        return True
+
+    return False
+
+# =========================
+# CRUD PC
+# =========================
+
+def crear_pc(db: Session, pc: PCCreate):
+    nueva_pc = PC(
+        marca=pc.marca,
+        modelo=pc.modelo,
+        numero_serie=pc.numero_serie,
+        codigo_barras=pc.codigo_barras,
+        especificaciones=pc.especificaciones,
+        estado=pc.estado
+    )
+
+    db.add(nueva_pc)
+    db.commit()
+    db.refresh(nueva_pc)
+
+    return nueva_pc
+
+
+def listar_pcs(db: Session):
+    return db.query(PC).all()
+
+
+def obtener_pc(db: Session, pc_id: int):
+    return db.query(PC).filter(PC.id == pc_id).first()
+
+
+def actualizar_pc(db: Session, pc_id: int, pc: PCUpdate):
+    pc_db = db.query(PC).filter(PC.id == pc_id).first()
+
+    if not pc_db:
+        return None
+
+    datos = pc.model_dump(exclude_unset=True)
+
+    for campo, valor in datos.items():
+        setattr(pc_db, campo, valor)
+
+    db.commit()
+    db.refresh(pc_db)
+
+    return pc_db
+
+
+def eliminar_pc(db: Session, pc_id: int):
+    pc_db = db.query(PC).filter(PC.id == pc_id).first()
+
+    if not pc_db:
+        return None
+
+    db.delete(pc_db)
+    db.commit()
+
+    return pc_db
+
+# =========================
+# CRUD PRÉSTAMOS PC
+# =========================
+
+def listar_prestamos_pc(db: Session):
+    return db.query(PrestamoPC).all()
+
+
+def obtener_prestamo_pc(db: Session, prestamo_id: int):
+    return db.query(PrestamoPC).filter(
+        PrestamoPC.id == prestamo_id
+    ).first()
+
+
+def crear_prestamo_pc(
+    db: Session,
+    prestamo: PrestamoPCCreate
+):
+    aprendiz = db.query(Aprendiz).filter(
+        Aprendiz.id == prestamo.aprendiz_id
+    ).first()
+
+    if not aprendiz:
+        raise HTTPException(
+            status_code=404,
+            detail="El aprendiz no existe"
+        )
+
+    pc = db.query(PC).filter(
+        PC.id == prestamo.pc_id
+    ).first()
+
+    if not pc:
+        raise HTTPException(
+            status_code=404,
+            detail="La PC no existe"
+        )
+
+    nuevo_prestamo = PrestamoPC(
+        fecha_salida=prestamo.fecha_salida,
+        pc_id=prestamo.pc_id,
+        aprendiz_id=prestamo.aprendiz_id,
+        firma_digital=prestamo.firma_digital,
+        responsabilidad_aprendiz=prestamo.responsabilidad_aprendiz,
+        flujo_salida=prestamo.flujo_salida
+    )
+
+    db.add(nuevo_prestamo)
+    db.commit()
+    db.refresh(nuevo_prestamo)
+
+    return nuevo_prestamo
+
+# =========================
+# CRUD PRÉSTAMOS PC
+# =========================
+
+def listar_prestamos_pc(db: Session):
+    return db.query(PrestamoPC).all()
+
+
+def obtener_prestamo_pc_por_id(
+    db: Session,
+    prestamo_pc_id: int
+):
+    return db.query(PrestamoPC).filter(
+        PrestamoPC.id == prestamo_pc_id
+    ).first()
+
+
+def crear_prestamo_pc(
+    db: Session,
+    prestamo: PrestamoPCCreate
+):
+    # Verificar que la PC exista
+    pc = db.query(PC).filter(
+        PC.id == prestamo.pc_id
+    ).first()
+
+    if not pc:
+        raise HTTPException(
+            status_code=404,
+            detail="La PC no existe"
+        )
+
+    # Verificar que el aprendiz exista
+    aprendiz = db.query(Aprendiz).filter(
+        Aprendiz.id == prestamo.aprendiz_id
+    ).first()
+
+    if not aprendiz:
+        raise HTTPException(
+            status_code=404,
+            detail="El aprendiz no existe"
+        )
+
+    nuevo_prestamo = PrestamoPC(
+        fecha_salida=prestamo.fecha_salida,
+        pc_id=prestamo.pc_id,
+        aprendiz_id=prestamo.aprendiz_id,
+        firma_digital=prestamo.firma_digital,
+        responsabilidad_aprendiz=prestamo.responsabilidad_aprendiz,
+        flujo_salida=prestamo.flujo_salida
+    )
+
+    db.add(nuevo_prestamo)
+    db.commit()
+    db.refresh(nuevo_prestamo)
+
+    return nuevo_prestamo
